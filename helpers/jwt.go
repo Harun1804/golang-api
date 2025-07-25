@@ -8,7 +8,7 @@ import (
 )
 
 // Nilai secret diambil dari environment variable JWT_SECRET
-var jwtKey = []byte(config.GetEnv("JWT_SECRET", "secret_key"))
+var jwtKey = []byte(config.GetEnv("JWT_SECRET", "secret"))
 
 func GenerateToken(username string) string {
 	// Mengatur waktu kedaluwarsa token, di sini kita set 60 menit dari waktu sekarang
