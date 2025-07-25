@@ -3,8 +3,7 @@ package main
 import (
 	"galaxy/backend-api/config"
 	"galaxy/backend-api/database"
-
-	"github.com/gin-gonic/gin"
+	"galaxy/backend-api/routes"
 )
 
 func main() {
@@ -14,11 +13,7 @@ func main() {
 	// Initialize the database connection
 	database.InitDB()
 
-	app := gin.Default()
-	app.GET("/", func(ctx *gin.Context) {
-		ctx.JSON(200, gin.H{
-			"message": "Hello, World!",
-		})
-	})
+	//setup router
+	app := routes.SetupRouter()
 	app.Run(":" + config.GetEnv("APP_PORT", "3000"))
 }
