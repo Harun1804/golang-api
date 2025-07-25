@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Register menangani proses registrasi user baru
@@ -67,6 +68,62 @@ func Register(c *gin.Context) {
 			Email:     user.Email,
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
+
+func Login(c *gin.Context) {
+// Inisialisasi struct untuk menampung data dari request
+	var req = structs.UserLoginRequest{}
+	var user = models.User{}
+
+	// Validasi input dari request body menggunakan ShouldBindJSON
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	// Cari user berdasarkan username yang diberikan di database
+	// Jika tidak ditemukan, kirimkan respons error Unauthorized
+	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+			Success: false,
+			Message: "User Not Found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	// Bandingkan password yang dimasukkan dengan password yang sudah di-hash di database
+	// Jika tidak cocok, kirimkan respons error Unauthorized
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+			Success: false,
+			Message: "Invalid Password",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	// Jika login berhasil, generate token untuk user
+	token := helpers.GenerateToken(user.Username)
+
+	// Kirimkan response sukses dengan status OK dan data user serta token
+	c.JSON(http.StatusOK, response.SuccessResponse{
+		Success: true,
+		Message: "Login Success",
+		Data: structs.UserResponse{
+			Id:        user.Id,
+			Name:      user.Name,
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.String(),
+			UpdatedAt: user.UpdatedAt.String(),
+			Token:     &token,
 		},
 	})
 }
