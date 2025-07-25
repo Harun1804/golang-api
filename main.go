@@ -9,5 +9,5 @@ func main() {
 			"message": "Hello, World!",
 		})
 	})
-	app.Run(":8080")
+	app.Run(":3000")
 }
