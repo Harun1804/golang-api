@@ -2,6 +2,7 @@ package main
 
 import (
 	"galaxy/backend-api/config"
+	"galaxy/backend-api/database"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,6 +10,9 @@ import (
 func main() {
 	// Load environment variables from .env file
 	config.LoadEnv()
+
+	// Initialize the database connection
+	database.InitDB()
 
 	app := gin.Default()
 	app.GET("/", func(ctx *gin.Context) {
