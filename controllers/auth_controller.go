@@ -5,7 +5,6 @@ import (
 	"galaxy/backend-api/helpers"
 	"galaxy/backend-api/models"
 	"galaxy/backend-api/structs"
-	"galaxy/backend-api/structs/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,7 @@ func Register(c *gin.Context) {
 	// Validasi request JSON menggunakan binding dari Gin
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Jika validasi gagal, kirimkan response error
-		c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
 			Message: "Validasi Errors",
 			Errors:  helpers.TranslateErrorMessage(err),
@@ -41,14 +40,14 @@ func Register(c *gin.Context) {
 		// Cek apakah error karena data duplikat (misalnya username/email sudah terdaftar)
 		if helpers.IsDuplicateEntryError(err) {
 			// Jika duplikat, kirimkan response 409 Conflict
-			c.JSON(http.StatusConflict, response.ErrorResponse{
+			c.JSON(http.StatusConflict, structs.ErrorResponse{
 				Success: false,
 				Message: "Duplicate entry error",
 				Errors:  helpers.TranslateErrorMessage(err),
 			})
 		} else {
 			// Jika error lain, kirimkan response 500 Internal Server Error
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+			c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
 				Success: false,
 				Message: "Failed to create user",
 				Errors:  helpers.TranslateErrorMessage(err),
@@ -58,7 +57,7 @@ func Register(c *gin.Context) {
 	}
 
 	// Jika berhasil, kirimkan response sukses
-	c.JSON(http.StatusCreated, response.SuccessResponse{
+	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "User created successfully",
 		Data: structs.UserResponse{
@@ -79,7 +78,7 @@ func Login(c *gin.Context) {
 
 	// Validasi input dari request body menggunakan ShouldBindJSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
 			Message: "Validation Errors",
 			Errors:  helpers.TranslateErrorMessage(err),
@@ -90,7 +89,7 @@ func Login(c *gin.Context) {
 	// Cari user berdasarkan username yang diberikan di database
 	// Jika tidak ditemukan, kirimkan respons error Unauthorized
 	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
 			Success: false,
 			Message: "User Not Found",
 			Errors:  helpers.TranslateErrorMessage(err),
@@ -101,7 +100,7 @@ func Login(c *gin.Context) {
 	// Bandingkan password yang dimasukkan dengan password yang sudah di-hash di database
 	// Jika tidak cocok, kirimkan respons error Unauthorized
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
 			Success: false,
 			Message: "Invalid Password",
 			Errors:  helpers.TranslateErrorMessage(err),
@@ -113,7 +112,7 @@ func Login(c *gin.Context) {
 	token := helpers.GenerateToken(user.Username)
 
 	// Kirimkan response sukses dengan status OK dan data user serta token
-	c.JSON(http.StatusOK, response.SuccessResponse{
+	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Login Success",
 		Data: structs.UserResponse{
