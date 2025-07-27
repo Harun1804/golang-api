@@ -33,6 +33,27 @@ func GetUsers(ctx *gin.Context) {
 	})
 }
 
+func GetUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	var user models.User
+
+	if err := database.DB.First(&user, id).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "User not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "User retrieved successfully",
+		Data:    user,
+	})
+}
+
 func CreateUser(ctx *gin.Context) {
 	var req = structs.UserCreateRequest{}
 
