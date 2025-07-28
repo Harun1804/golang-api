@@ -25,11 +25,24 @@ func GetUsers(ctx *gin.Context) {
 		return
 	}
 
-	// Kirimkan response sukses dengan data user
+	// Konversi ke UserResponse slice untuk menyembunyikan password
+	var userResponses []structs.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, structs.UserResponse{
+			Id:        user.Id,
+			Name:      user.Name,
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	// Kirimkan response sukses dengan data user (tanpa password)
 	ctx.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Users retrieved successfully",
-		Data:    users,
+		Data:    userResponses,
 	})
 }
 
@@ -50,7 +63,14 @@ func GetUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "User retrieved successfully",
-		Data:    user,
+		Data:    structs.UserResponse{
+			Id:        user.Id,
+			Name:      user.Name,
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
 	})
 }
 
