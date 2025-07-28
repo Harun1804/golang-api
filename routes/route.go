@@ -34,6 +34,6 @@ func setupUserRoutes(api *gin.RouterGroup) {
 	users.GET("/", controllers.GetUsers)
 	users.POST("/", controllers.CreateUser)
 	users.GET("/:id", controllers.GetUser)
-	// users.PUT("/:id", controllers.UpdateUser)
+	users.PUT("/:id", controllers.UpdateUser)
 	// users.DELETE("/:id", controllers.DeleteUser)
 }

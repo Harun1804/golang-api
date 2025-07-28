@@ -108,3 +108,57 @@ func CreateUser(ctx *gin.Context) {
 		Data:    user,
 	})
 }
+
+func UpdateUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	
+	var user models.User
+
+	if err := database.DB.First(&user, id).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "User not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	var req structs.UserUpdateRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation error",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	user.Name = req.Name
+	user.Username = req.Username
+	user.Email = req.Email
+	if req.Password != "" {
+		user.Password = helpers.HashPassword(req.Password)
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to update user",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "User updated successfully",
+		Data:    structs.UserResponse{
+			Id:        user.Id,
+			Name:      user.Name,
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
