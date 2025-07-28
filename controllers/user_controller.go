@@ -78,9 +78,9 @@ func CreateUser(ctx *gin.Context) {
 	var req = structs.UserCreateRequest{}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, structs.ErrorResponse{
+		ctx.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
-			Message: "Invalid request data",
+			Message: "Validation error",
 			Errors:  helpers.TranslateErrorMessage(err),
 		})
 		return
@@ -125,7 +125,7 @@ func UpdateUser(ctx *gin.Context) {
 
 	var req structs.UserUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, structs.ErrorResponse{
+		ctx.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
 			Message: "Validation error",
 			Errors:  helpers.TranslateErrorMessage(err),
