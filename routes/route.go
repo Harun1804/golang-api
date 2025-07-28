@@ -4,12 +4,21 @@ import (
 	"galaxy/backend-api/controllers"
 	"galaxy/backend-api/middlewares"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter() *gin.Engine {
 	//initialize gin
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+	}))
+
+
 	api := router.Group("/api")
 
 	// Setup routes for different modules
