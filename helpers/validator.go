@@ -5,54 +5,79 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gorm.io/gorm"
 )
 
-// TranslateErrorMessage menangani validasi dari validator.v10 dan duplikasi entri dari GORM
+// TranslateErrorMessage handles validation errors from validator.v10 and duplicate entry errors from GORM
 func TranslateErrorMessage(err error) map[string]string {
-	// Membuat map untuk menampung pesan error
 	errorsMap := make(map[string]string)
+	if err == nil {
+			return errorsMap
+	}
 
-	// Handle validasi dari validator.v10
+	// Handle validator.v10 errors
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
-		for _, fieldError := range validationErrors {
-			field := fieldError.Field() // Menyimpan nama field yang gagal validasi
-			switch fieldError.Tag() {   // Menangani berbagai jenis validasi
-			case "required":
-				errorsMap[field] = fmt.Sprintf("%s is required", field) // Pesan error jika field kosong
-			case "email":
-				errorsMap[field] = "Invalid email format" // Pesan error jika format email tidak valid
-			case "unique":
-				errorsMap[field] = fmt.Sprintf("%s already exists", field) // Pesan error jika data sudah ada
-			case "min":
-				errorsMap[field] = fmt.Sprintf("%s must be at least %s characters", field, fieldError.Param()) // Pesan error jika nilai terlalu pendek
-			case "max":
-				errorsMap[field] = fmt.Sprintf("%s must be at most %s characters", field, fieldError.Param()) // Pesan error jika nilai terlalu panjang
-			case "numeric":
-				errorsMap[field] = fmt.Sprintf("%s must be a number", field) // Pesan error jika nilai bukan angka
-			default:
-				errorsMap[field] = "Invalid value" // Pesan error default untuk kesalahan validasi lainnya
+			for _, fieldError := range validationErrors {
+					field := fieldError.Field()
+					errorsMap[field] = validatorErrorMessage(fieldError)
 			}
-		}
 	}
 
-	// Handle error dari GORM untuk duplicate entry
-	if err != nil {
-		// Cek jika error mengandung "Duplicate entry" (duplikasi data di database)
-		if strings.Contains(err.Error(), "Duplicate entry") {
-			if strings.Contains(err.Error(), "username") {
-				errorsMap["Username"] = "Username already exists" // Pesan error jika username sudah ada
-			}
-			if strings.Contains(err.Error(), "email") {
-				errorsMap["Email"] = "Email already exists" // Pesan error jika email sudah ada
-			}
-		} else if err == gorm.ErrRecordNotFound {
-			// Jika data yang dicari tidak ditemukan di database
-			errorsMap["Error"] = "Record not found"
-		}
+	// Handle GORM duplicate entry and not found errors
+	for k, v := range handleGormError(err) {
+		errorsMap[k] = v
 	}
 
-	// Mengembalikan map yang berisi pesan error
+	return errorsMap
+}
+
+func validatorErrorMessage(fieldError validator.FieldError) string {
+    switch fieldError.Tag() {
+    case "required":
+        return fmt.Sprintf("%s is required", fieldError.Field())
+    case "email":
+        return "Invalid email format"
+    case "unique":
+        return fmt.Sprintf("%s already exists", fieldError.Field())
+    case "min":
+        return fmt.Sprintf("%s must be at least %s characters", fieldError.Field(), fieldError.Param())
+    case "max":
+        return fmt.Sprintf("%s must be at most %s characters", fieldError.Field(), fieldError.Param())
+    case "numeric":
+        return fmt.Sprintf("%s must be a number", fieldError.Field())
+    default:
+        return "Invalid value"
+    }
+}
+
+func handleGormError(err error) map[string]string {
+	errorsMap := make(map[string]string)
+	if err == nil {
+		return errorsMap
+	}
+	if strings.Contains(err.Error(), "Duplicate entry") {
+		for k, v := range checkDuplicateFields(err, "username", "email") {
+			errorsMap[k] = v
+		}
+	} else if err == gorm.ErrRecordNotFound {
+		errorsMap["Error"] = "Record not found"
+	}
+	return errorsMap
+}
+
+func checkDuplicateFields(err error, fields ...string) map[string]string {
+	errorsMap := make(map[string]string)
+	if err == nil {
+		return errorsMap
+	}
+	for _, field := range fields {
+		if strings.Contains(err.Error(), field) {
+			titleCaser := cases.Title(language.Und)
+			errorsMap[titleCaser.String(field)] = fmt.Sprintf("%s already exists", titleCaser.String(field))
+		}
+	}
 	return errorsMap
 }
 
