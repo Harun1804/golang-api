@@ -1,6 +1,9 @@
-package structs
+package payloads
 
-// Struct ini digunakan untuk menampilkan data user sebagai response API
+import (
+	"galaxy/backend-api/models"
+)
+
 type UserResponse struct {
 	Id        uint    `json:"id"`
 	Name      string  `json:"name"`
@@ -31,4 +34,20 @@ type UserUpdateRequest struct {
 type UserLoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+func ToUserResponse(user models.User, token string) UserResponse {
+	var tokenPtr *string
+    if token != "" {
+        tokenPtr = &token
+    }
+	return UserResponse{
+		Id:        user.Id,
+		Name:      user.Name,
+		Username:  user.Username,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		Token:     tokenPtr,
+	}
 }

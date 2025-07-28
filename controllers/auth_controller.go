@@ -4,7 +4,7 @@ import (
 	"galaxy/backend-api/database"
 	"galaxy/backend-api/helpers"
 	"galaxy/backend-api/models"
-	"galaxy/backend-api/structs"
+	"galaxy/backend-api/payloads"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,16 +14,12 @@ import (
 // Register menangani proses registrasi user baru
 func Register(c *gin.Context) {
 	// Inisialisasi struct untuk menangkap data request
-	var req = structs.UserCreateRequest{}
+	var req = payloads.UserCreateRequest{}
 
 	// Validasi request JSON menggunakan binding dari Gin
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Jika validasi gagal, kirimkan response error
-		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
-			Success: false,
-			Message: "Validasi Errors",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(c, http.StatusUnprocessableEntity, "Validation Errors", err)
 		return
 	}
 
@@ -40,89 +36,44 @@ func Register(c *gin.Context) {
 		// Cek apakah error karena data duplikat (misalnya username/email sudah terdaftar)
 		if helpers.IsDuplicateEntryError(err) {
 			// Jika duplikat, kirimkan response 409 Conflict
-			c.JSON(http.StatusConflict, structs.ErrorResponse{
-				Success: false,
-				Message: "Duplicate entry error",
-				Errors:  helpers.TranslateErrorMessage(err),
-			})
+			helpers.SendError(c, http.StatusConflict, "Duplicate entry error", err)
 		} else {
 			// Jika error lain, kirimkan response 500 Internal Server Error
-			c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-				Success: false,
-				Message: "Failed to create user",
-				Errors:  helpers.TranslateErrorMessage(err),
-			})
+			helpers.SendError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 		return
 	}
 
-	// Jika berhasil, kirimkan response sukses
-	c.JSON(http.StatusCreated, structs.SuccessResponse{
-		Success: true,
-		Message: "User created successfully",
-		Data: structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
-	})
+	helpers.SendSuccess(c, http.StatusCreated, "User created successfully", payloads.ToUserResponse(user, ""))
 }
 
 func Login(c *gin.Context) {
 // Inisialisasi struct untuk menampung data dari request
-	var req = structs.UserLoginRequest{}
+	var req = payloads.UserLoginRequest{}
 	var user = models.User{}
 
 	// Validasi input dari request body menggunakan ShouldBindJSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
-			Success: false,
-			Message: "Validation Errors",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(c, http.StatusUnprocessableEntity, "Validation Errors", err)
 		return
 	}
 
 	// Cari user berdasarkan username yang diberikan di database
 	// Jika tidak ditemukan, kirimkan respons error Unauthorized
 	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
-			Success: false,
-			Message: "User Not Found",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(c, http.StatusUnauthorized, "User Not Found", err)
 		return
 	}
 
 	// Bandingkan password yang dimasukkan dengan password yang sudah di-hash di database
 	// Jika tidak cocok, kirimkan respons error Unauthorized
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
-			Success: false,
-			Message: "Invalid Password",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(c, http.StatusUnauthorized, "Invalid Password", err)
 		return
 	}
 
 	// Jika login berhasil, generate token untuk user
 	token := helpers.GenerateToken(user.Username)
 
-	// Kirimkan response sukses dengan status OK dan data user serta token
-	c.JSON(http.StatusOK, structs.SuccessResponse{
-		Success: true,
-		Message: "Login Success",
-		Data: structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.String(),
-			UpdatedAt: user.UpdatedAt.String(),
-			Token:     &token,
-		},
-	})
+	helpers.SendSuccess(c, http.StatusOK, "Login Success", payloads.ToUserResponse(user, token))
 }

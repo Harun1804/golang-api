@@ -4,190 +4,89 @@ import (
 	"galaxy/backend-api/database"
 	"galaxy/backend-api/helpers"
 	"galaxy/backend-api/models"
-	"galaxy/backend-api/structs"
+	"galaxy/backend-api/payloads"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func GetUsers(ctx *gin.Context) {
-	// Inisialisasi slice untuk menampung data user
 	var users []models.User
-
-	// Ambil semua data user dari database
 	if err := database.DB.Find(&users).Error; err != nil {
-		// Jika terjadi error, kirimkan response error
-		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-			Success: false,
-			Message: "Failed to retrieve users",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to retrieve users", err)
 		return
 	}
-
-	// Konversi ke UserResponse slice untuk menyembunyikan password
-	var userResponses []structs.UserResponse
+	var userResponses []payloads.UserResponse
 	for _, user := range users {
-		userResponses = append(userResponses, structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
-		})
+		userResponses = append(userResponses, payloads.ToUserResponse(user, ""))
 	}
-
-	// Kirimkan response sukses dengan data user (tanpa password)
-	ctx.JSON(http.StatusOK, structs.SuccessResponse{
-		Success: true,
-		Message: "Users retrieved successfully",
-		Data:    userResponses,
-	})
+	helpers.SendSuccess(ctx, http.StatusOK, "Users retrieved successfully", userResponses)
 }
 
 func GetUser(ctx *gin.Context) {
 	id := ctx.Param("id")
-
 	var user models.User
-
 	if err := database.DB.First(&user, id).Error; err != nil {
-		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
-			Success: false,
-			Message: "User not found",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusNotFound, "User not found", err)
 		return
 	}
-
-	ctx.JSON(http.StatusOK, structs.SuccessResponse{
-		Success: true,
-		Message: "User retrieved successfully",
-		Data:    structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
-	})
+	helpers.SendSuccess(ctx, http.StatusOK, "User retrieved successfully", payloads.ToUserResponse(user, ""))
 }
 
 func CreateUser(ctx *gin.Context) {
-	var req = structs.UserCreateRequest{}
-
+	var req payloads.UserCreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
-			Success: false,
-			Message: "Validation error",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusUnprocessableEntity, "Validation error", err)
 		return
 	}
-
 	user := models.User{
-		Name: 	 req.Name,
+		Name:     req.Name,
 		Username: req.Username,
 		Email:    req.Email,
 		Password: helpers.HashPassword(req.Password),
 	}
-
 	if err := database.DB.Create(&user).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-			Success: false,
-			Message: "Failed to create user",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to create user", err)
 		return
 	}
-
-	ctx.JSON(http.StatusCreated, structs.SuccessResponse{
-		Success: true,
-		Message: "User created successfully",
-		Data:    user,
-	})
+	helpers.SendSuccess(ctx, http.StatusCreated, "User created successfully", payloads.ToUserResponse(user, ""))
 }
 
 func UpdateUser(ctx *gin.Context) {
 	id := ctx.Param("id")
-	
 	var user models.User
-
 	if err := database.DB.First(&user, id).Error; err != nil {
-		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
-			Success: false,
-			Message: "User not found",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusNotFound, "User not found", err)
 		return
 	}
-
-	var req structs.UserUpdateRequest
+	var req payloads.UserUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
-			Success: false,
-			Message: "Validation error",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusUnprocessableEntity, "Validation error", err)
 		return
 	}
-
 	user.Name = req.Name
 	user.Username = req.Username
 	user.Email = req.Email
 	if req.Password != "" {
 		user.Password = helpers.HashPassword(req.Password)
 	}
-
 	if err := database.DB.Save(&user).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-			Success: false,
-			Message: "Failed to update user",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to update user", err)
 		return
 	}
-
-	ctx.JSON(http.StatusOK, structs.SuccessResponse{
-		Success: true,
-		Message: "User updated successfully",
-		Data:    structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
-	})
+	helpers.SendSuccess(ctx, http.StatusOK, "User updated successfully", payloads.ToUserResponse(user, ""))
 }
 
 func DeleteUser(ctx *gin.Context) {
 	id := ctx.Param("id")
 	var user models.User
-
 	if err := database.DB.First(&user, id).Error; err != nil {
-		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
-			Success: false,
-			Message: "User not found",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusNotFound, "User not found", err)
 		return
 	}
-
 	if err := database.DB.Delete(&user).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-			Success: false,
-			Message: "Failed to delete user",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete user", err)
 		return
 	}
-
-	ctx.JSON(http.StatusOK, structs.SuccessResponse{
-		Success: true,
-		Message: "User deleted successfully",
-		Data:    nil,
-	})
+	helpers.SendSuccess(ctx, http.StatusOK, "User deleted successfully", nil)
 }
