@@ -18,7 +18,6 @@ func SetupRouter() *gin.Engine {
 		ExposeHeaders:    []string{"Content-Length"},
 	}))
 
-
 	api := router.Group("/api")
 
 	// Setup routes for different modules
@@ -38,7 +37,7 @@ func setupAuthRoutes(api *gin.RouterGroup) {
 // setupUserRoutes handles user related routes
 func setupUserRoutes(api *gin.RouterGroup) {
 	users := api.Group("/users")
-	users.Use(middlewares.AuthMiddleware())
+	users.Use(middlewares.AltAuthMiddleware())
 	// Add user routes here when needed
 	users.GET("/", controllers.GetUsers)
 	users.POST("/", controllers.CreateUser)

@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"galaxy/backend-api/config"
+	"galaxy/backend-api/helpers"
 	"net/http"
 	"strings"
 
@@ -51,6 +52,34 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("username", claims.Subject)
 
 		// Lanjut ke handler berikutnya
+		c.Next()
+	}
+}
+
+func AltAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var userId uint
+		var err error
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			helpers.MiddlewareError(c, http.StatusUnauthorized, "Authorization header is required", nil)
+			return
+		}
+
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			userId, err = helpers.VerifyToken(tokenString)
+			if err != nil {
+				helpers.MiddlewareError(c, http.StatusUnauthorized, "Invalid token", err)
+				return
+			}
+		} else {
+			helpers.MiddlewareError(c, http.StatusUnauthorized, "Authorization header must start with Bearer", nil)
+			return
+		}
+
+		c.Set("userId", userId)
 		c.Next()
 	}
 }

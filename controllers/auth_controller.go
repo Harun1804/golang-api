@@ -73,7 +73,11 @@ func Login(c *gin.Context) {
 	}
 
 	// Jika login berhasil, generate token untuk user
-	token := helpers.GenerateToken(user.Username)
+	token, err := helpers.AltGenerateToken(user.Id, user.Username, user.Email)
+	if err != nil {
+		helpers.SendError(c, http.StatusInternalServerError, "Failed to generate token", err)
+		return
+	}
 
 	helpers.SendSuccess(c, http.StatusOK, "Login Success", payloads.ToUserResponse(user, token))
 }

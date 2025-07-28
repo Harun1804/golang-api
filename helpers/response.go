@@ -33,3 +33,12 @@ func SendSuccess(ctx *gin.Context, status int, msg string, data interface{}) {
 		Data:    data,
 	})
 }
+
+func MiddlewareError(ctx *gin.Context, status int, msg string, err error) {
+	ctx.AbortWithStatusJSON(status, ErrorResponse{
+		Success: false,
+		Message: msg,
+		Errors:  TranslateErrorMessage(err),
+	})
+
+}
