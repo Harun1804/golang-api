@@ -23,6 +23,7 @@ func SetupRouter() *gin.Engine {
 	// Setup routes for different modules
 	setupAuthRoutes(api)
 	setupUserRoutes(api)
+	setupPostRoutes(api)
 	setupMediaRoutes(api)
 
 	return router
@@ -45,6 +46,15 @@ func setupUserRoutes(api *gin.RouterGroup) {
 	users.GET("/:id", controllers.GetUser)
 	users.PUT("/:id", controllers.UpdateUser)
 	users.DELETE("/:id", controllers.DeleteUser)
+}
+
+func setupPostRoutes(api *gin.RouterGroup) {
+	posts := api.Group("/posts")
+	posts.GET("/", controllers.GetPosts)
+	posts.GET("/:id", controllers.GetPost)
+	posts.POST("/", controllers.CreatePost)
+	posts.PUT("/:id", controllers.UpdatePost)
+	posts.DELETE("/:id", controllers.DeletePost)
 }
 
 func setupMediaRoutes(api *gin.RouterGroup) {
