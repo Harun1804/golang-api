@@ -162,3 +162,32 @@ func UpdateUser(ctx *gin.Context) {
 		},
 	})
 }
+
+func DeleteUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	var user models.User
+
+	if err := database.DB.First(&user, id).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "User not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	if err := database.DB.Delete(&user).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to delete user",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "User deleted successfully",
+		Data:    nil,
+	})
+}
