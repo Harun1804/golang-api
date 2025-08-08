@@ -3,6 +3,7 @@ package controllers
 import (
 	"galaxy/backend-api/database"
 	"galaxy/backend-api/helpers"
+	"galaxy/backend-api/helpers/minio"
 	"galaxy/backend-api/models"
 	"galaxy/backend-api/payloads"
 	"net/http"
@@ -55,11 +56,25 @@ func CreatePost(ctx *gin.Context) {
 	}
 	defer imageFile.Close()
 
-	err = helpers.SaveMedia(imageFile, imageName, true, filePath)
-	if err != nil {
-		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to save image", err)
-		return
-	}
+
+  // --- MinIO Example Usage ---
+  minioHelper, err := minio.InitMinio()
+  if err != nil {
+    helpers.SendError(ctx, http.StatusInternalServerError, "Failed to connect to MinIO", err)
+    return
+  }
+  err = minioHelper.UploadFile(imageName, imageFile)
+  if err != nil {
+    helpers.SendError(ctx, http.StatusInternalServerError, "Failed to upload image to MinIO", err)
+    return
+  }
+
+  // Commented out local save:
+  // err = helpers.SaveMedia(imageFile, imageName, true, filePath)
+  // if err != nil {
+  //   helpers.SendError(ctx, http.StatusInternalServerError, "Failed to save image", err)
+  //   return
+  // }
 
 	post := models.Post{
 		Title:   req.Title,
@@ -94,10 +109,24 @@ func UpdatePost(ctx *gin.Context) {
 	post.Content = req.Content
 
 	if req.Image != nil {
-		if err := helpers.DeleteMedia(filePath, post.Image); err != nil {
-			helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image", err)
-			return
-		}
+
+	// --- MinIO Example Usage ---
+	minioHelper, err := minio.InitMinio()
+	if err != nil {
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to connect to MinIO", err)
+		return
+	}
+	err = minioHelper.DeleteFile(post.Image)
+	if err != nil {
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image from MinIO", err)
+		return
+	}
+
+	// Commented out local delete:
+	// if err := helpers.DeleteMedia(filePath, post.Image); err != nil {
+	//   helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image", err)
+	//   return
+	// }
 
 		imageName := helpers.GenerateFilename(req.Image.Filename)
 		imageFile, err := req.Image.Open()
@@ -107,11 +136,20 @@ func UpdatePost(ctx *gin.Context) {
 		}
 		defer imageFile.Close()
 
-		err = helpers.SaveMedia(imageFile, imageName, true, filePath)
-		if err != nil {
-			helpers.SendError(ctx, http.StatusInternalServerError, "Failed to save image", err)
-			return
-		}
+
+	// --- MinIO Example Usage ---
+	err = minioHelper.UploadFile(imageName, imageFile)
+	if err != nil {
+		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to upload image to MinIO", err)
+		return
+	}
+
+	// Commented out local save:
+	// err = helpers.SaveMedia(imageFile, imageName, true, filePath)
+	// if err != nil {
+	//   helpers.SendError(ctx, http.StatusInternalServerError, "Failed to save image", err)
+	//   return
+	// }
 
 		post.Image = imageName
 	}
@@ -134,10 +172,24 @@ func DeletePost(ctx *gin.Context) {
 		return
 	}
 
-	if err := helpers.DeleteMedia(filePath, post.Image); err != nil {
-		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image", err)
-		return
-	}
+
+  // --- MinIO Example Usage ---
+  minioHelper, err := minio.InitMinio()
+  if err != nil {
+    helpers.SendError(ctx, http.StatusInternalServerError, "Failed to connect to MinIO", err)
+    return
+  }
+  err = minioHelper.DeleteFile(post.Image)
+  if err != nil {
+    helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image from MinIO", err)
+    return
+  }
+
+  // Commented out local delete:
+  // if err := helpers.DeleteMedia(filePath, post.Image); err != nil {
+  //   helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post image", err)
+  //   return
+  // }
 
 	if err := database.DB.Delete(&post).Error; err != nil {
 		helpers.SendError(ctx, http.StatusInternalServerError, "Failed to delete post", err)
